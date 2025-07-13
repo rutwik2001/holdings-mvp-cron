@@ -1,0 +1,24 @@
+{
+  "name": "holdings-mvp-cron",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "ts-node main.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.2.0",
+    "ethcall": "^6.0.6",
+    "ethers": "^6.15.0",
+    "mongodb": "^6.17.0",
+    "node-schedule": "^2.1.1",
+    "typescript": "^5.8.3",
+    "viem": "^2.31.7"
+  },
+  "devDependencies": {
+    "@types/node-schedule": "^2.1.8"
+  }
+}
