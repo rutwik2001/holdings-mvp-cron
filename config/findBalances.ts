@@ -1,6 +1,29 @@
 import getPrices from './getPrices';
 import createContractInstances from './instances';
-import { ethers } from 'ethers';
+import { ethers, Interface, Contract } from 'ethers';
+
+// ----- Interfaces -----
+
+interface Token {
+  symbol: string;
+  name: string;
+  address: string | null;
+  blockchain: string;
+  decimals: number;
+}
+
+interface BalanceResult {
+  symbol: string;
+  name: string;
+  contractAddress: string | null;
+  balance: string;
+  formattedBalance: string;
+  value: number;
+  walletAddress: string;
+  blockchain: string;
+  decimals: number;
+}
+
 
 const ERC20Abi = [
   {
@@ -12,47 +35,59 @@ const ERC20Abi = [
   },
 ];
 
-const erc20Interface = new ethers.Interface(ERC20Abi);
+const erc20Interface: Interface = new ethers.Interface(ERC20Abi);
 
-export default async function getBatchedBalances(addresses: string[]) {
-  const pricesInUSD = await getPrices();
-  const { instances, ERC20Tokens, nativeTokens } = await createContractInstances();
+export default async function getBatchedBalances(
+  addresses: string[]
+): Promise<{
+  balancesByAddress: Record<string, BalanceResult[]>;
+  valueByAddress: Record<string, number>;
+}> {
+  const pricesInUSD: Record<string, { usd: number }> = await getPrices();
+  const {
+    instances,
+    ERC20Tokens,
+    nativeTokens,
+  }: {
+    instances: Record<string, Contract>;
+    ERC20Tokens: Token[];
+    nativeTokens: Record<string, Token>;
+  } = await createContractInstances();
 
-  const balancesByAddress: Record<string, any[]> = {};
+  const balancesByAddress: Record<string, BalanceResult[]> = {};
   const valueByAddress: Record<string, number> = {};
 
   for (const chain of Object.keys(instances)) {
-    const multicall = instances[chain];
+    const multicall: Contract = instances[chain];
     if (!multicall) continue;
 
-    // Filter tokens by chain
-    const tokenList = ERC20Tokens.filter(t => t.blockchain === chain && t.address);
+    const tokenList: Token[] = ERC20Tokens.filter(t => t.blockchain === chain && t.address);
     const calls: { target: string; callData: string }[] = [];
 
-    // Build calls: one per (wallet, token)
     for (const address of addresses) {
       for (const token of tokenList) {
-        const callData = erc20Interface.encodeFunctionData('balanceOf', [address]);
+        const callData: string = erc20Interface.encodeFunctionData('balanceOf', [address]);
         calls.push({ target: token.address!, callData });
       }
     }
 
     try {
-      const [blockNumber, returnData] = await multicall.aggregateMultiAddress(calls);
+      const [blockNumber, returnData]: [bigint, string[]] = await multicall.aggregateMultiAddress(calls);
       const nativeBalances: bigint[] = await multicall.getBalances(addresses);
 
       let index = 0;
+
       for (const address of addresses) {
         if (!balancesByAddress[address]) balancesByAddress[address] = [];
         if (!valueByAddress[address]) valueByAddress[address] = 0;
 
         for (const token of tokenList) {
-          const ret = returnData[index++];
-          const decoded = erc20Interface.decodeFunctionResult('balanceOf', ret)[0];
-          const formatted = ethers.formatUnits(decoded, token.decimals);
-          const value = Number(formatted) * (pricesInUSD[token.symbol.toLowerCase()]?.usd || 0);
+          const ret: string = returnData[index++];
+          const decoded: bigint = erc20Interface.decodeFunctionResult('balanceOf', ret)[0] as bigint;
+          const formatted: string = ethers.formatUnits(decoded, token.decimals);
+          const value: number = Number(formatted) * (pricesInUSD[token.symbol.toLowerCase()]?.usd || 0);
 
-          if (Number(decoded) > 0) {
+          if (decoded > 0n) {
             balancesByAddress[address].push({
               symbol: token.symbol,
               name: token.name,
@@ -64,30 +99,33 @@ export default async function getBatchedBalances(addresses: string[]) {
               blockchain: chain,
               decimals: token.decimals,
             });
+
             valueByAddress[address] += value;
           }
         }
       }
 
-      // Native token balances
+      // Add native token balances
       for (let i = 0; i < addresses.length; i++) {
-        const address = addresses[i];
-        const native = nativeBalances[i];
-        const formatted = ethers.formatUnits(native, nativeTokens[chain].decimals);
-        const value = Number(formatted) * (pricesInUSD[nativeTokens[chain].symbol.toLowerCase()]?.usd || 0);
+        const address: string = addresses[i];
+        const native: bigint = nativeBalances[i];
+        const nativeToken: Token = nativeTokens[chain];
+        const formatted: string = ethers.formatUnits(native, nativeToken.decimals);
+        const value: number = Number(formatted) * (pricesInUSD[nativeToken.symbol.toLowerCase()]?.usd || 0);
 
-        if (Number(native) > 0) {
+        if (native > 0n) {
           balancesByAddress[address].push({
-            symbol: nativeTokens[chain].symbol,
-            name: nativeTokens[chain].name,
+            symbol: nativeToken.symbol,
+            name: nativeToken.name,
             contractAddress: null,
             balance: native.toString(),
             formattedBalance: formatted.toString(),
             value,
             walletAddress: address,
             blockchain: chain,
-            decimals: nativeTokens[chain].decimals,
+            decimals: nativeToken.decimals,
           });
+
           valueByAddress[address] += value;
         }
       }
