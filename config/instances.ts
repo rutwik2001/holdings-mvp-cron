@@ -4,6 +4,7 @@ import { ethers, Contract } from 'ethers';
 import multicallABI from './contractABI';
 import { Collection, Db, Document } from 'mongodb';
 
+// Type definition for a token
 interface Token {
   symbol: string;
   name: string;
@@ -21,6 +22,11 @@ interface TokenDocument extends Document {
   decimals: number;
 }
 
+/**
+ * Initializes and returns multicall contract instances per chain,
+ * as well as ERC20 and native token configurations from the database.
+ * @returns Muticall contract instances nad token details based on different tokens and blokcchains
+ */
 let cachedInstances: Record<string, Contract> | null = null;
 let cachedERC20TokenMap: Token[] | null = null;
 let cachedNativeTokenMap: Record<string, Token> | null = null;
@@ -70,9 +76,11 @@ export default async function createContractInstances(): Promise<{
           : null;
 
       if (!provider || !multicallAddress) continue;
-
+      //If address is null → this is a native token entry, initializing provider for each blockchain 
       multicallInstances[item.blockchain] = new Contract(multicallAddress, multicallABI, provider);
 
+      /*If address is null → this is a native token entry, provider will be the same but 
+      seggregating the token details from erc-20 tokens*/ 
       nativeTokens[item.blockchain] = {
         symbol: item.symbol,
         name: item.name,
@@ -81,6 +89,9 @@ export default async function createContractInstances(): Promise<{
         decimals: item.decimals,
       };
     } else {
+      
+      /*If address is not null → this is an erc-20 token entry, provider will be the same 
+      and token detials will be added to an array for sending to multicall contract*/
       ERC20Tokens.push({
         symbol: item.symbol,
         name: item.name,

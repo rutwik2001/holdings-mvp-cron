@@ -1,3 +1,8 @@
+/**
+ * ABI (Application Binary Interface) for a custom Multicall smart contract.
+ * This contract enables batching multiple read-only calls into a single on-chain call,
+ * reducing the number of RPC calls needed when interacting with smart contracts.
+ */
 const multicallABI = [
     {
       "inputs": [

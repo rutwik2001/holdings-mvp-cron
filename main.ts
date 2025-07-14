@@ -3,10 +3,12 @@ import clientPromise from './config/mongodb';
 import getBatchedBalances from './config/findBalances';
 import { Collection, Db } from 'mongodb';
 
+// Represents a wallet document with an address
 interface Wallet {
   address: string;
 }
 
+// Represents individual token balance details
 interface BalanceResult {
   symbol: string;
   name: string;
@@ -19,6 +21,7 @@ interface BalanceResult {
   decimals: number;
 }
 
+// Represents the structure of a balance document to store in MongoDB
 interface BalanceDoc {
   address: string;
   value: number;
@@ -26,6 +29,7 @@ interface BalanceDoc {
   timestamp: number;
 }
 
+// Main logic to fetch balances and insert them into the database
 async function main(): Promise<void> {
   const client = await clientPromise;
   const db: Db = client.db('Holdings');
@@ -36,6 +40,7 @@ async function main(): Promise<void> {
   const wallets: Wallet[] = await walletsCollection.find({}, { projection: { address: 1, _id: 0 } }).toArray();
   const addresses: string[] = wallets.map((w) => w.address);
 
+  // Fetch token balances and values in USD using multicall
   try {
     const {
       balancesByAddress,
@@ -49,6 +54,8 @@ async function main(): Promise<void> {
 
     for (const addr of addresses) {
       const tokenBalances = balancesByAddress[addr];
+      
+       // Construct balance documents for wallets with non-zero balances
       if (tokenBalances && tokenBalances.length > 0) {
         balanceDocs.push({
           address: addr,
