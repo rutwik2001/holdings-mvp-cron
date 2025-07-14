@@ -12,11 +12,12 @@ The cron system periodically fetches ERC-20 and native token balances for a set 
 
 ## 🧩 Tech Stack
 
-- Node.js + TypeScript
-- ethers.js
-- MongoDB
-- PM2 (for scheduling in production)
-- Custom Solidity Multicall contract
+- **Next.js (App Router)**
+- **TypeScript**
+- **Tailwind CSS**
+- **Ethers.js**
+- **MongoDB** (via API)
+- **Custom Multicall Smart Contract**
 
 ---
 
@@ -44,11 +45,12 @@ opSepoliaAddress=deployed_multicall_address
 zetaChainAddress=deployed_multicall_address
 
 coingeckoAPI=your_api_key
-
+```
 
 ### ▶️ Running Locally
-
+```
 npm install
 npm run build
 node dist/main.js
 pm2 start dist/main.js --name holdings-cron
+```
