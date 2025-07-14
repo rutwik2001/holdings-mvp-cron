@@ -52,5 +52,4 @@ coingeckoAPI=your_api_key
 npm install
 npm run build
 node dist/main.js
-pm2 start dist/main.js --name holdings-cron
 ```
